@@ -143,7 +143,9 @@ def run(args):
             raise SystemExit('Results without a manifest: choose a new --out directory')
         atomic_json(manifest,signature)
     records=[]
-    visual=None
+    visual_path=out/'first_visual.json'
+    visual=(json.loads(visual_path.read_text(encoding='utf-8'))
+            if visual_path.exists() else None)
     for pos,index in enumerate(eval_ids):
         file=out/f'bird_{index:05d}.json'
         # For transparency, this loop can resume after any fully saved test bird.
@@ -213,6 +215,7 @@ def run(args):
                     'reconstructions':{m:png(images[m]) for m in MODES},
                     'modes':modes,'visible_pieces':visible.astype(int).tolist(),
                     'teacher_margin':original_margin}
+            atomic_json(visual_path,visual)
     def vals(key):
         return np.asarray([r['modes'][key]['pixel_mse'] for r in records])
     summary={}
@@ -262,8 +265,8 @@ def run(args):
                      'A higher CNN margin is not a ground-truth image reconstruction score.']}
     atomic_json(out/'results.json',result)
     if visual is None:
-        # A resumed run retains its per-bird JSON but would not include images;
-        # do not fabricate a new first-bird visual. Retain existing receipt.
+        # A receipt can be absent only if the first image was not completed; 
+        # do not manufacture a replacement image from a later example.
         print('No new first-bird visualization; prior local viewer receipt is unaffected.',flush=True)
     else:
         visual.update({'protocol':result['protocol'],'n_test':len(records),
