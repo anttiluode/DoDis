@@ -43,7 +43,7 @@ def features(parts:np.ndarray)->np.ndarray:
     a=np.asarray(parts,dtype=np.float32)
     if a.shape[-4:]!=(64,3,8,8):raise ValueError('Expected [...,64,3,8,8]')
     color=a.mean(axis=(-1,-2))
-    lum=(a[...,:,0,:,:]+a[...,:,1,:,:]+a[...,:,2,:,:])/3
+    lum=(a[...,0,:,:]+a[...,1,:,:]+a[...,2,:,:])/3
     dx=np.mean(np.abs(np.diff(lum,axis=-1)),axis=(-1,-2))
     dy=np.mean(np.abs(np.diff(lum,axis=-2)),axis=(-1,-2))
     rms=np.sqrt(np.mean(a*a,axis=(-1,-2,-3))+1e-8)
