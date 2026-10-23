@@ -102,6 +102,50 @@ The experiment generates two files:
 
 To inspect a new run without publishing it, open the web page and choose **Load a locally produced receipt**. Publishing an updated receipt requires committing the generated docs/receipt.json to a repository or fork with Pages enabled.
 
+## DoDis v2 — local memory addresses the missing-information problem
+
+The original 12-bird experiment found that learned binding reduced reconstruction MSE slightly, but **a shuffled binding graph obtained much of the same benefit**. More importantly, the donor retrieval mechanism still chose whole images before borrowing their individual pieces. That often supplied the wrong content, however good the downstream graph was.
+
+The new [v2 experiment](PREREG_V2.md) revisits the original [SihtiImageModel](https://github.com/anttiluode/SihtiImageModel) lesson: the coarse image core is not the full image; it is a *partial address* for local detail. A missing Sihti residue should be looked up using information actually visible near it, not by matching a complete scene. This is implemented in [local_memory.py](local_memory.py).
+
+**What changed, independently of the original DoDis v1 result:**
+
+- Each missing band/tile has its **own** donor list. Candidates can come from other spatial locations in other training photographs, not just the original tile coordinate of one globally matched bird.
+- The address uses **only currently visible** same-scale neighbors, same-location pieces at other octaves, and adjacent coarser-scale neighbors. The system never gets the original complete core or the target's missing residue.
+- Context matching is performed against all 16 source positions of each of 256 training birds. Candidate provenance and the quantity of visible evidence are saved per hidden piece. The original whole-image donor retrieval is retained as a direct comparator.
+- The original settling energy now supports separate donor penalties **per missing piece**. It continues to enumerate all available choices and accept only energy-reducing updates.
+- A **masked-mean (no-repair) baseline** is included. So a completion must first outperform doing nothing to count as an improvement.
+- The registered evaluation uses **100** previously unseen, intact-CNN-recognized test birds, with independent paired confidence intervals for learned-versus-shuffled binding. Every bird receives a separate restart-safe JSON receipt.
+
+The seven fixed evaluation conditions are:
+
+| Arm | Content candidate source | Extra consistency / preference |
+|---|---|---|
+| Masked mean | No retrieved details | None; explicit no-repair baseline |
+| Global memory | Same four whole-image donors as v1 | Smoothness and donor score |
+| Same-band local memory | Per-piece local donors, **no cross-scale context** | Same smoothness and donor score; isolates the benefit of coarse/fine observations |
+| Local memory | Four individually retrieved local donor patches with visible cross-scale context | Same smoothness and donor score |
+| Local + learned binding | Same local donor patches | Graph A learned from other training images |
+| Local + shuffled binding | Same local donor patches | Matched, permuted Graph A |
+| Local + CNN purpose | Same local donor patches | Learned Graph A and optional Graph B classifier score |
+
+**No real v2 CIFAR outcome is claimed yet.** Passing the synthetic address and monotonicity tests is not evidence of improved photo reconstruction. The decisive results are (i) whether cross-scale local memory beats masked mean, global donors **and same-band-only local retrieval**, and (ii) whether binding beats the shuffled-binding control across 100 birds, with paired uncertainty reported.
+
+### Run the v2 benchmark
+
+After completing the generic setup above, from the DoDis folder:
+
+~~~bash
+python -m unittest discover -s tests -v
+python run_v2.py --sihti-root ../SihtiGraphModel --device auto
+~~~
+
+On a CUDA machine, add **--device cuda**. It uses the same publicly committed frozen CNN checkpoint and local CIFAR data, does not train any model, and stores results in **runs/v2_local_100_birds/results.json** plus individual per-bird JSON files. Each bird is checkpointed before the next, so an interrupted run can resume with identical arguments.
+
+A fast *exploratory* check can use **--eval-birds 12 --out runs/v2_smoke_12**. That is not a substitute for the preregistered 100-bird evaluation. When a complete run is available, the generated **docs/receipt_v2.json** can be loaded into the GitHub Pages viewer or published on GitHub to show a real example, rather than simulated outcomes.
+
+---
+
 ## Scientific limits
 
 The task hides **random multiscale components**, not a rectangular hole in a photograph. All images are small CIFAR-10 samples and the evaluation selects birds that the existing CNN recognizes correctly before corruption. Donor coverage matters, and all candidate replacements come from other images.

@@ -32,6 +32,11 @@ code{background:#e6e9e5;padding:2px 5px;border-radius:3px;overflow-wrap:anywhere
 <div class="status" id="status">Loading an experimental receipt. No real result is displayed until one exists; this page does not invent scores.</div>
 <section aria-label="experimental readout">
  <div class="toolbar">
+  <label for="dataset">Experimental receipt</label>
+  <select id="dataset" aria-label="Choose published experiment">
+    <option value="v1">v1 · 12 birds / global donors</option>
+    <option value="v2" disabled>v2 · 100 birds / local donors (not yet published)</option>
+  </select>
   <label for="mode">Repair condition</label>
   <select id="mode">
    <option value="smooth_memory">Memory + smoothness</option>
@@ -65,17 +70,43 @@ code{background:#e6e9e5;padding:2px 5px;border-radius:3px;overflow-wrap:anywhere
 <p>For each bird never used in the memory or graph training, hide half its 64 octave/tile residues. Retrieve candidate patches using the visible pieces only. Discrete coordinate descent compares identical candidate pools and starts under four energies: remembered content plus boundary smoothness; plus learned binding; a shuffled-binding control; and plus an optional teacher-distilled purpose term.</p>
 <p>The key measurement is <strong>image reconstruction error against the withheld original</strong>. CNN margin is a separate outcome, measured after settling. A higher bird score accompanied by a worse image is the adversarial pull we want to expose—not a successful repair.</p>
 <p class="small">The score called “pixel MSE” measures the reconstructed whole image, which differs from truth only through missing multiscale residues; it is not a conventional contiguous missing-pixel hole. All models in this experiment operate over the same 64-piece Sihti decomposition. The optional CNN surrogate is trained across multiple images; it is not v3’s one-photo switch polynomial.</p>
-<div class="foot">Research instrument, not a production image-completion model. Inspect <a href="https://github.com/anttiluode/DoDis">the source and locked protocol</a>. The GitHub Pages viewer reads <code>docs/receipt.json</code> when a real Python experiment exports it. Mouseover or graph confidence alone cannot supply missing image content.</div>
+<div class="foot">Research instrument, not a production image-completion model. Inspect <a href="https://github.com/anttiluode/DoDis">the source and locked protocol</a>. The viewer reads the measured v1 <code>docs/receipt.json</code> and, when published, the independent v2 <code>docs/receipt_v2.json</code>. Mouseover or graph confidence alone cannot supply missing image content.</div>
 </main>
 <script>
-const $=id=>document.getElementById(id);let receipt=null;
+const $=id=>document.getElementById(id);
+let receipt=null;
+const published={v1:null,v2:null};
+const labels={
+ smooth_memory:'Memory + smoothness',
+ binding:'+ Learned binding',
+ shuffled_binding:'+ Shuffled binding',
+ binding_plus_purpose:'+ CNN-purpose graph',
+ masked_mean:'Masked mean · no repair',
+ global_memory:'Global donor memory · v1 control',
+ local_sameband:'Local donor memory · same-band only',
+ local_memory:'Local per-piece donor memory',
+ local_binding:'Local memory + learned binding',
+ local_shuffled:'Local memory + shuffled binding',
+ local_purpose:'Local memory + CNN purpose'
+};
 const noImg='data:image/svg+xml,'+encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256"><rect width="256" height="256" fill="#eeebe4"/><path d="M0 128H256M128 0V256" stroke="#b7b8ac"/><text x="128" y="127" text-anchor="middle" fill="#6d736c" font-family="sans-serif" font-size="15">No run loaded</text></svg>');
 ['truth','corrupt','repair'].forEach(id=>$(id).src=noImg);
-function drawMask(a){const parent=$('mask');parent.replaceChildren();for(let i=0;i<64;i++){const b=document.createElement('span');if(a?.[i])b.className='on';b.title='Piece '+i+(a?.[i]?' observed':' hidden');parent.appendChild(b)}}
+function drawMask(a){
+ const parent=$('mask');parent.replaceChildren();
+ for(let i=0;i<64;i++){
+  const b=document.createElement('span');
+  if(a?.[i])b.className='on';
+  b.title='Piece '+i+(a?.[i]?' observed':' hidden');
+  parent.appendChild(b)
+ }
+}
 function drawTrace(arr){
  const el=$('plot'),ctx=el.getContext('2d'),w=el.width,h=el.height;
- ctx.clearRect(0,0,w,h);ctx.fillStyle='#ffffff';ctx.fillRect(0,0,w,h);
- if(!arr?.length)return;
+ ctx.clearRect(0,0,w,h);ctx.fillStyle='#fff';ctx.fillRect(0,0,w,h);
+ if(!arr?.length){
+  ctx.fillStyle='#62706c';ctx.font='16px system-ui';
+  ctx.fillText('No settling is performed in this baseline.',20,80);return;
+ }
  const lo=Math.min(...arr),hi=Math.max(...arr),span=Math.max(hi-lo,.001);
  ctx.strokeStyle='#e0e3df';ctx.lineWidth=1;
  for(let i=1;i<4;i++){ctx.beginPath();ctx.moveTo(0,h*i/4);ctx.lineTo(w,h*i/4);ctx.stroke()}
@@ -83,52 +114,95 @@ function drawTrace(arr){
  arr.forEach((v,i)=>{const x=i/Math.max(1,arr.length-1)*w;
   const y=12+(hi-v)/span*(h-24);if(!i)ctx.moveTo(x,y);else ctx.lineTo(x,y)});
  ctx.stroke();
- ctx.fillStyle='#45564e';ctx.font='14px system-ui';ctx.fillText('E start '+arr[0].toFixed(4),12,20);
+ ctx.fillStyle='#45564e';ctx.font='14px system-ui';
+ ctx.fillText('E start '+arr[0].toFixed(4),12,20);
  ctx.fillText('E finish '+arr[arr.length-1].toFixed(4),w-190,h-13);
 }
 function show(){
  if(!receipt)return;
  const mode=$('mode').value,v=receipt.modes[mode];
  if(!v)return;
- $('truth').src=receipt.true;$('corrupt').src=receipt.corrupted;
+ $('truth').src=receipt.true;
+ $('corrupt').src=receipt.corrupted;
  $('repair').src=receipt.reconstructions[mode];
- $('repairTitle').textContent=$('mode').selectedOptions[0].textContent;
+ $('repairTitle').textContent=labels[mode]||mode;
  $('mse').textContent=v.pixel_mse.toFixed(5);
  $('margin').textContent=(v.cnn_margin>=0?'+':'')+v.cnn_margin.toFixed(3);
  $('gain').textContent=(v.cnn_margin_gain_over_corrupt>=0?'+':'')+v.cnn_margin_gain_over_corrupt.toFixed(3);
- $('moves').textContent=String(v.moves);
+ $('moves').textContent=String(v.moves||0);
  drawTrace(v.energy_trace);
- $('explain').textContent='Energy '+v.energy_before.toFixed(4)+' → '+v.energy_after.toFixed(4)+
-  (v.monotone?'. Every move non-increasing.':'. WARNING: monotonicity failure.')+
-  ' Correct-image CNN margin: '+receipt.teacher_margin.toFixed(3)+'.';
+ $('explain').textContent=v.energy_before===null||v.energy_before===undefined
+  ?'This is the masked-mean control: missing spectral pieces are left blank; there is no optimization. Correct-image CNN margin: '+receipt.teacher_margin.toFixed(3)+'.'
+  :'Energy '+v.energy_before.toFixed(4)+' → '+v.energy_after.toFixed(4)+
+   (v.monotone?'. Every accepted move is non-increasing.':'. WARNING: monotonicity failure.')+
+   ' Correct-image CNN margin: '+receipt.teacher_margin.toFixed(3)+'.';
  drawMask(receipt.visible_pieces);
- const names={smooth_memory:'Memory + smoothness',binding:'+ Learned binding',
- shuffled_binding:'+ Shuffled binding',binding_plus_purpose:'+ CNN-purpose graph'};
- $('table').innerHTML=Object.entries(receipt.summary).map(([name,r])=>
-  '<tr><td>'+names[name]+'</td><td>'+r.mean_pixel_mse.toFixed(5)+'</td><td>'+
-  r.mean_cnn_margin.toFixed(3)+'</td><td>'+r.mse_improved_vs_smooth_count+' / '+receipt.n_test+'</td></tr>').join('');
- $('readout').textContent='CNN surrogate validation R² = '+receipt.purpose.validation_r2.toFixed(3)+
- '. Binding reduces mean MSE: '+(receipt.gates.binding_reduces_mean_mse?'YES':'NO')+
- '. Purpose raises true-CNN margin: '+(receipt.gates.purpose_increases_mean_margin?'YES':'NO')+
- '. Results on '+receipt.n_test+' held-out correctly classified birds; example test index '+receipt.index+'.';
+ const table=$('table');table.replaceChildren();
+ for(const [name,r] of Object.entries(receipt.summary)){
+  const tr=document.createElement('tr');
+  const wins=r.mse_improved_vs_masked_mean_count??r.mse_improved_vs_smooth_count??0;
+  for(const value of [labels[name]||name,r.mean_pixel_mse.toFixed(5),
+                      r.mean_cnn_margin.toFixed(3),wins+' / '+receipt.n_test]){
+   const cell=document.createElement('td');cell.textContent=value;tr.appendChild(cell);
+  }
+  table.appendChild(tr);
+ }
+ const kind=receipt.protocol?.includes('v2')?'v2 local-memory experiment':'v1 original experiment';
+ const v2note=receipt.protocol?.includes('v2')
+   ?' Local vs shuffled paired uncertainty is recorded in the v2 full results.json. Masked mean is included as an explicit control.'
+   :' The v1 receipt contains only one example and aggregate figures.';
+ const r2=receipt.purpose?.validation_r2;
+ $('readout').textContent=kind+' | CNN-purpose surrogate validation R²: '+
+  (Number.isFinite(r2)?r2.toFixed(3):'not available')+
+  ' | '+receipt.n_test+' held-out birds | example test index '+receipt.index+'.'+v2note;
 }
 function loadData(data){
- if(!data?.true||!data?.modes||!data?.summary||!data?.visible_pieces)throw Error('Not a DoDis receipt');
- receipt=data;$('status').textContent='REAL RUN LOADED — test bird #'+data.index+
-  ' | '+data.n_test+' held-out birds | CNN-purpose surrogate validation R² '+
-  data.purpose.validation_r2.toFixed(3)+' | no ground-truth leakage into candidate search.';
- $('status').style.borderLeftColor='#2b8277';show();
+ if(!data?.true||!data?.modes||!data?.summary||!data?.visible_pieces||
+    !data?.reconstructions)throw Error('Not a complete DoDis receipt');
+ receipt=data;
+ const picker=$('mode'),keep=picker.value;picker.replaceChildren();
+ for(const mode of Object.keys(data.modes)){
+  const o=document.createElement('option');o.value=mode;
+  o.textContent=labels[mode]||mode;picker.appendChild(o);
+ }
+ const preferred=data.protocol?.includes('v2')?'local_binding':'binding';
+ picker.value=Object.hasOwn(data.modes,keep)?keep:preferred;
+ $('status').textContent='MEASURED RUN · '+(data.protocol||'DoDis v1')+
+  ' | '+data.n_test+' held-out birds | no hidden test residue is used to choose donors.';
+ $('status').style.borderLeftColor='#2b8277';
+ show();
 }
 $('mode').addEventListener('change',show);
+$('dataset').addEventListener('change',e=>{
+ if(published[e.target.value])loadData(published[e.target.value]);
+});
 $('receiptFile').addEventListener('change',async e=>{
  const file=e.target.files?.[0];if(!file)return;
- try{loadData(JSON.parse(await file.text()))}catch(err){$('status').textContent='Invalid receipt: '+err.message}
+ try{
+  const data=JSON.parse(await file.text());
+  let localOption=$('dataset').querySelector('[value="local"]');
+  if(!localOption){
+   localOption=document.createElement('option');
+   localOption.value='local';localOption.textContent='Locally loaded receipt';
+   $('dataset').appendChild(localOption);
+  }
+  published.local=data;$('dataset').value='local';loadData(data);
+ }catch(err){$('status').textContent='Invalid receipt: '+err.message}
 });
 drawMask(null);drawTrace([]);
-fetch('./docs/receipt.json',{cache:'no-store'})
- .then(r=>{if(!r.ok)throw Error('Run the Python experiment and commit docs/receipt.json to show real results.');return r.json()})
- .then(loadData).catch(e=>{$('status').textContent='NO CIFAR RUN YET. '+e.message+
- ' The source code and evaluation protocol are available now; the display will populate only from recorded data.'});
+Promise.all([
+ fetch('./docs/receipt.json',{cache:'no-store'}).then(r=>r.ok?r.json():null).catch(()=>null),
+ fetch('./docs/receipt_v2.json',{cache:'no-store'}).then(r=>r.ok?r.json():null).catch(()=>null)
+]).then(([v1,v2])=>{
+ published.v1=v1;published.v2=v2;
+ if(v2){
+  const option=$('dataset').querySelector('[value="v2"]');
+  option.disabled=false;option.textContent='v2 · '+v2.n_test+' birds / local donors';
+ }
+ if(v1){$('dataset').value='v1';loadData(v1)}
+ else if(v2){$('dataset').value='v2';loadData(v2)}
+ else $('status').textContent='NO EXPERIMENTAL RECEIPT PUBLISHED. Run Python and load docs/receipt.json or docs/receipt_v2.json from your computer.';
+});
 </script>
 </body>
 </html>

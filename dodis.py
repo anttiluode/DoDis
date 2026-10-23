@@ -176,11 +176,18 @@ class Settler:
         distances=np.asarray(donor_distance,dtype=np.float32)
         if self.candidates.shape[1:]!=(64,3,8,8) or len(distances)!=len(self.candidates):
             raise ValueError('candidate shape mismatch')
-        # One candidate per donor. Optional blank (mean-fill) is a REAL candidate.
+        if distances.ndim not in (1,2) or (distances.ndim==2 and distances.shape[1]!=64):
+            raise ValueError('donor distances must be [K] or per-piece [K,64]')
+        # One candidate per donor slot; in v2 each slot can hold a DIFFERENT
+        # training patch for each missing piece. Blank is an explicit candidate.
         if allow_blank:
             self.candidates=np.concatenate([self.candidates,np.zeros_like(self.candidates[:1])])
-            distances=np.append(distances,distances.max()+1.)
-        self.penalty=(distances-distances.min())/(np.std(distances)+1e-3)
+            blank=(distances.max(axis=0)+1.) if distances.ndim==2 else distances.max()+1.
+            distances=np.concatenate((distances,np.asarray(blank,dtype=np.float32)[None]),axis=0) if distances.ndim==2 else np.append(distances,blank)
+        if distances.ndim==2:
+            self.penalty=(distances-distances.min(axis=0,keepdims=True))/(np.std(distances,axis=0,keepdims=True)+1e-3)
+        else:
+            self.penalty=(distances-distances.min())/(np.std(distances)+1e-3)
         self.normalizer=normalizer
         self.bind=binding
         self.purpose=purpose
@@ -193,7 +200,9 @@ class Settler:
     def cost(self,choice):
         p=self.unpack(choice)
         image=render(p)
-        unary=self.beta*float(np.mean(self.penalty[choice[self.hidden]]))
+        penalties=(self.penalty[choice[self.hidden],self.hidden] if self.penalty.ndim==2
+                   else self.penalty[choice[self.hidden]])
+        unary=self.beta*float(np.mean(penalties))
         edge=self.smooth*seams(image)*20.
         u=self.fixed_u.copy()
         u[self.hidden]=self.cache_u[choice[self.hidden],self.hidden]
