@@ -25,26 +25,27 @@ For each *missing* target tile j at band b and row/column (r,c):
 
 This is a local content-addressing **experiment** and does not automatically transfer the P3 learned regression/codebook from SihtiImageModel v1.
 
-## Six controlled conditions, same masks and solver
+## Seven controlled conditions, same masks and solver
 
 1. **masked_mean**: No fill. Missing residues remain zero; report its image pixel MSE and actual CNN margin before trying any candidate.
 2. **global_memory**: DoDis v1's top-four *whole-image* donors based only on visible pieces; memory rank plus boundary smoothness; identical v1 weights.
-3. **local_memory**: Top-four *per-piece local* donors; same smoothness and memory-rank weights, no consistency or CNN purpose.
-4. **local_binding**: Same local candidates plus Graph A learned from other images.
-5. **local_shuffled**: Same local candidates plus Graph A with its weight matrices permuted across edges (precommitted deterministic shuffle seed 91).
-6. **local_purpose**: Same local candidates plus Graph A and a separately fitted shared CNN-purpose readout.
+3. **local_sameband**: Per-piece local donors addressed by observed eight-connected neighbors in the **same band only**. No cross-octave information ranks these donors. This isolates the effect of coarse/fine context.
+4. **local_memory**: Top-four per-piece donors addressed by same-band **and** genuinely observed cross-octave context; same smoothing and memory weights.
+5. **local_binding**: Same full-context local candidates plus Graph A learned from other images.
+6. **local_shuffled**: Same local candidates plus Graph A with its weight matrices permuted across edges (deterministic shuffle seed 91).
+7. **local_purpose**: Same local candidates plus Graph A and a separately fitted shared CNN-purpose readout.
 
 All dynamic modes start with donor slot 0 for missing pieces, use three asynchronous candidate-enumeration sweeps at fixed seed 41+test image index, and the same memory weight .05, seam weight .75, binding .4, purpose .12 (zero in the other arms). The only difference between arms is the declared information source. Every accepted move must satisfy ΔE≤1e−8. A decrease in the explicit energy is *not* a decrease in ground-truth error.
 
 ## Measurements and precommitted pass/fail gates
 
-Every test bird is saved independently after completion for restart and audit. Full **100-bird** JSON must include each bird's six reconstruction MSEs, hidden-residue MSEs, original/corrupted/completed real CNN margins, accepted moves, energy traces, exact visible mask, training-donor provenance and local context counts. Separately save summary statistics, paired learned-minus-control MSE differences, a two-sided paired sign-flip test (5,000 flips) and a 95% paired bootstrap interval (5,000 paired resamples), seeded independently of solver.
+Every test bird is saved independently after completion for restart and audit. Full **100-bird** JSON must include each bird's seven reconstruction MSEs, hidden-residue MSEs, original/corrupted/completed real CNN margins, accepted moves, energy traces, exact visible mask, training-donor provenance and local context counts. Separately save summary statistics, paired learned-minus-control MSE differences, a two-sided paired sign-flip test (5,000 flips) and a 95% paired bootstrap interval (5,000 paired resamples), seeded independently of solver.
 
 **G0 — source safety:** source roles disjoint, training donors only; hidden target residues cannot affect selected candidates or solver; exact all-piece reconstruction; original birds classified correctly; all observed pieces retained.
 
-**G1 — solver:** all accepted updates non-increasing under their own explicit energy in all five dynamic conditions.
+**G1 — solver:** all accepted updates non-increasing under their own explicit energy in all six dynamic conditions.
 
-**G2 — content:** new local retrieval beats **masked_mean** on mean pixel MSE across 100 test birds. Also compare against whole-image donor retrieval. Report confidence intervals and both outcomes even when they fail.
+**G2 — content:** cross-scale local retrieval beats **masked_mean** on mean pixel MSE across 100 test birds. Separately, it must beat **same-band-only** local retrieval, directly testing whether available coarse/fine context helps address missing detail. Also compare against whole-image donor retrieval. Report paired confidence intervals for all comparisons even when they fail.
 
 **G3 — structural consistency:** learned Graph A has smaller mean reconstruction MSE than **both** local-memory-only and *matched shuffled Graph A*; report both subcriteria. Stronger evidence requires the **upper endpoint of the paired 95% bootstrap CI for learned minus shuffled to be below zero**. No changing binding coefficients or scoring conditions after test results.
 
