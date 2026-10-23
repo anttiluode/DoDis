@@ -1,0 +1,134 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>DoDis — the remembered image and the graph</title>
+<style>
+:root{color-scheme:light;--bg:#f6f3ed;--ink:#232c2a;--muted:#62706c;--line:#d8d9d0;--teal:#2b8277;--orange:#b95929;--purple:#7954a7}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.6 system-ui,-apple-system,"Segoe UI",sans-serif}
+main{max-width:1150px;margin:auto;padding:42px 22px 70px}a{color:#265f82}.eyebrow{font-size:12px;font-weight:750;color:var(--teal);letter-spacing:.17em;text-transform:uppercase}h1{font-size:clamp(36px,6vw,66px);letter-spacing:-.05em;line-height:1.08;max-width:780px;margin:12px 0 20px}h2{font-size:23px;letter-spacing:-.03em;margin:35px 0 10px}h3{font-size:15px;margin:0 0 8px}p{max-width:870px}p.intro{font-size:18px;color:#414b47;max-width:830px}.muted{color:var(--muted)}
+.three{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin:26px 0 32px}.role,.pane,.panel{border:1px solid var(--line);border-radius:13px;background:#fffdf8;padding:18px}.role{min-height:153px}.role .tag{font:750 11px system-ui;letter-spacing:.13em;text-transform:uppercase}.role:nth-child(1) .tag{color:var(--orange)}.role:nth-child(2) .tag{color:var(--teal)}.role:nth-child(3) .tag{color:var(--purple)}
+.role p{margin:6px 0 0;font-size:14px}.toolbar{display:flex;flex-wrap:wrap;align-items:center;gap:10px;margin:16px 0}.toolbar label{font-size:13px}button,select,input::file-selector-button{font:inherit;border:1px solid #c6ccc4;border-radius:8px;background:white;padding:9px 12px;color:var(--ink);cursor:pointer}button:hover,select:hover{border-color:var(--teal)}button:focus-visible,select:focus-visible,input:focus-visible{outline:3px solid #a4dcd5}
+button.selected{background:var(--teal);color:#fff}.pill{display:inline-block;border:1px solid #c7d8d4;color:#2b635b;background:#ecf8f4;border-radius:20px;padding:3px 10px;font-size:12px;font-weight:650}
+.gallery{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}.pane{padding:9px 9px 15px}.pane img{width:100%;aspect-ratio:1;object-fit:contain;image-rendering:pixelated;border-radius:7px;background:#e6e5dc;display:block}.pane h3{padding:10px 8px 0}.pane p{padding:0 8px;margin:0;color:var(--muted);font-size:12px}.metrics{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin:14px 0}.metric{padding:14px 16px;border:1px solid var(--line);border-radius:10px;background:white}.metric strong{display:block;font-size:27px;letter-spacing:-.03em;font-variant-numeric:tabular-nums}.metric span{font-size:12px;color:var(--muted)}
+.plot{width:100%;height:170px;border:1px solid var(--line);background:#fff;border-radius:10px}.small{font-size:12px;color:var(--muted)}.status{background:#ede9df;border-left:4px solid var(--orange);padding:13px 15px;border-radius:6px;margin:24px 0}.matrix{display:grid;grid-template-columns:repeat(8,1fr);gap:3px;width:min(330px,100%);margin:12px auto}.matrix span{aspect-ratio:1;border:1px solid #deded8;border-radius:3px;background:#eadac7}.matrix span.on{background:#568c84}
+table{border-collapse:collapse;width:100%;font-size:13px}td,th{text-align:left;padding:10px;border-bottom:1px solid var(--line);font-variant-numeric:tabular-nums}th{background:#f4f6f2}
+code{background:#e6e9e5;padding:2px 5px;border-radius:3px;overflow-wrap:anywhere}.foot{border-top:1px solid var(--line);margin-top:50px;padding-top:20px;color:var(--muted);font-size:12px}
+@media(max-width:790px){.three,.gallery{grid-template-columns:1fr 1fr}.metrics{grid-template-columns:1fr 1fr}}
+@media(max-width:520px){.three,.gallery,.metrics{grid-template-columns:1fr}main{padding:26px 14px}}
+</style>
+</head>
+<body>
+<main>
+<div class="eyebrow">DoDis / memory + consistency + purpose</div>
+<h1>What was there.<br>What fits.<br>What the model wants.</h1>
+<p class="intro">An image-repair experiment where the content comes from remembered images, spatial relationships come from other real images, and a separately distilled CNN graph contributes an optional preference. The three are deliberately kept apart.</p>
+<div class="three">
+ <article class="role"><span class="tag">01 · Content</span><h2>Memory</h2><p>Actual Sihti pieces from other CIFAR training birds. The hidden target cannot be consulted.</p></article>
+ <article class="role"><span class="tag">02 · Consistency</span><h2>Binding</h2><p>Learned cross-scale and neighboring-piece co-occurrences across a separate image collection.</p></article>
+ <article class="role"><span class="tag">03 · Purpose</span><h2>CNN graph</h2><p>A white-box surrogate fitted to the frozen CNN on another training split. It can raise the margin without making the reconstruction correct.</p></article>
+</div>
+<div class="status" id="status">Loading an experimental receipt. No real result is displayed until one exists; this page does not invent scores.</div>
+<section aria-label="experimental readout">
+ <div class="toolbar">
+  <label for="mode">Repair condition</label>
+  <select id="mode">
+   <option value="smooth_memory">Memory + smoothness</option>
+   <option value="binding">+ learned binding</option>
+   <option value="shuffled_binding">+ shuffled binding control</option>
+   <option value="binding_plus_purpose">+ learned binding + CNN graph</option>
+  </select>
+  <label for="receiptFile">Load a locally produced receipt</label>
+  <input id="receiptFile" type="file" accept=".json,application/json" aria-label="Load docs/receipt.json">
+ </div>
+ <div class="gallery">
+   <article class="pane"><img id="truth" alt="Undamaged image from held-out test set"><h3>Hidden truth</h3><p>Used only to score the final repair, never to choose it.</p></article>
+   <article class="pane"><img id="corrupt" alt="Masked image before completion"><h3>50% masked</h3><p>Visible multiscale pieces are held fixed.</p></article>
+   <article class="pane"><img id="repair" alt="Reconstructed image from selected memory pieces"><h3 id="repairTitle">Reconstruction</h3><p>Candidate contents come only from other images.</p></article>
+   <article class="pane"><div id="mask" class="matrix" aria-label="Observed and missing Sihti piece mask"></div><h3>64 Sihti pieces</h3><p>Teal: observed. Sand: held out.</p></article>
+ </div>
+ <div class="metrics">
+  <div class="metric"><strong id="mse">—</strong><span>Pixel MSE (lower is better)</span></div>
+  <div class="metric"><strong id="margin">—</strong><span>Actual CNN margin on repair</span></div>
+  <div class="metric"><strong id="gain">—</strong><span>Margin gain vs corrupted input</span></div>
+  <div class="metric"><strong id="moves">—</strong><span>Accepted asynchronous piece updates</span></div>
+ </div>
+ <h2>Thinking clock · descent receipt</h2>
+ <canvas id="plot" class="plot" width="1080" height="170" aria-label="Energy at every coordinate descent update"></canvas>
+ <p class="small" id="explain">Every candidate for each hidden piece is scored. The accepted update cannot increase the defined discrete energy. This property does not guarantee better reconstruction.</p>
+ <h2>Held-out comparison</h2>
+ <div class="panel"><table><thead><tr><th>Condition</th><th>Mean pixel MSE</th><th>Mean true-CNN margin</th><th>Reconstruction wins vs memory-only</th></tr></thead><tbody id="table"><tr><td colspan="4">No experimental results loaded</td></tr></tbody></table></div>
+ <p id="readout" class="small"></p>
+</section>
+<h2>The actual experiment</h2>
+<p>For each bird never used in the memory or graph training, hide half its 64 octave/tile residues. Retrieve candidate patches using the visible pieces only. Discrete coordinate descent compares identical candidate pools and starts under four energies: remembered content plus boundary smoothness; plus learned binding; a shuffled-binding control; and plus an optional teacher-distilled purpose term.</p>
+<p>The key measurement is <strong>image reconstruction error against the withheld original</strong>. CNN margin is a separate outcome, measured after settling. A higher bird score accompanied by a worse image is the adversarial pull we want to expose—not a successful repair.</p>
+<p class="small">The score called “pixel MSE” measures the reconstructed whole image, which differs from truth only through missing multiscale residues; it is not a conventional contiguous missing-pixel hole. All models in this experiment operate over the same 64-piece Sihti decomposition. The optional CNN surrogate is trained across multiple images; it is not v3’s one-photo switch polynomial.</p>
+<div class="foot">Research instrument, not a production image-completion model. Inspect <a href="https://github.com/anttiluode/DoDis">the source and locked protocol</a>. The GitHub Pages viewer reads <code>docs/receipt.json</code> when a real Python experiment exports it. Mouseover or graph confidence alone cannot supply missing image content.</div>
+</main>
+<script>
+const $=id=>document.getElementById(id);let receipt=null;
+const noImg='data:image/svg+xml,'+encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256"><rect width="256" height="256" fill="#eeebe4"/><path d="M0 128H256M128 0V256" stroke="#b7b8ac"/><text x="128" y="127" text-anchor="middle" fill="#6d736c" font-family="sans-serif" font-size="15">No run loaded</text></svg>');
+['truth','corrupt','repair'].forEach(id=>$(id).src=noImg);
+function drawMask(a){const parent=$('mask');parent.replaceChildren();for(let i=0;i<64;i++){const b=document.createElement('span');if(a?.[i])b.className='on';b.title='Piece '+i+(a?.[i]?' observed':' hidden');parent.appendChild(b)}}
+function drawTrace(arr){
+ const el=$('plot'),ctx=el.getContext('2d'),w=el.width,h=el.height;
+ ctx.clearRect(0,0,w,h);ctx.fillStyle='#ffffff';ctx.fillRect(0,0,w,h);
+ if(!arr?.length)return;
+ const lo=Math.min(...arr),hi=Math.max(...arr),span=Math.max(hi-lo,.001);
+ ctx.strokeStyle='#e0e3df';ctx.lineWidth=1;
+ for(let i=1;i<4;i++){ctx.beginPath();ctx.moveTo(0,h*i/4);ctx.lineTo(w,h*i/4);ctx.stroke()}
+ ctx.strokeStyle='#287f74';ctx.lineWidth=3;ctx.beginPath();
+ arr.forEach((v,i)=>{const x=i/Math.max(1,arr.length-1)*w;
+  const y=12+(hi-v)/span*(h-24);if(!i)ctx.moveTo(x,y);else ctx.lineTo(x,y)});
+ ctx.stroke();
+ ctx.fillStyle='#45564e';ctx.font='14px system-ui';ctx.fillText('E start '+arr[0].toFixed(4),12,20);
+ ctx.fillText('E finish '+arr[arr.length-1].toFixed(4),w-190,h-13);
+}
+function show(){
+ if(!receipt)return;
+ const mode=$('mode').value,v=receipt.modes[mode];
+ if(!v)return;
+ $('truth').src=receipt.true;$('corrupt').src=receipt.corrupted;
+ $('repair').src=receipt.reconstructions[mode];
+ $('repairTitle').textContent=$('mode').selectedOptions[0].textContent;
+ $('mse').textContent=v.pixel_mse.toFixed(5);
+ $('margin').textContent=(v.cnn_margin>=0?'+':'')+v.cnn_margin.toFixed(3);
+ $('gain').textContent=(v.cnn_margin_gain_over_corrupt>=0?'+':'')+v.cnn_margin_gain_over_corrupt.toFixed(3);
+ $('moves').textContent=String(v.moves);
+ drawTrace(v.energy_trace);
+ $('explain').textContent='Energy '+v.energy_before.toFixed(4)+' → '+v.energy_after.toFixed(4)+
+  (v.monotone?'. Every move non-increasing.':'. WARNING: monotonicity failure.')+
+  ' Correct-image CNN margin: '+receipt.teacher_margin.toFixed(3)+'.';
+ drawMask(receipt.visible_pieces);
+ const names={smooth_memory:'Memory + smoothness',binding:'+ Learned binding',
+ shuffled_binding:'+ Shuffled binding',binding_plus_purpose:'+ CNN-purpose graph'};
+ $('table').innerHTML=Object.entries(receipt.summary).map(([name,r])=>
+  '<tr><td>'+names[name]+'</td><td>'+r.mean_pixel_mse.toFixed(5)+'</td><td>'+
+  r.mean_cnn_margin.toFixed(3)+'</td><td>'+r.mse_improved_vs_smooth_count+' / '+receipt.n_test+'</td></tr>').join('');
+ $('readout').textContent='CNN surrogate validation R² = '+receipt.purpose.validation_r2.toFixed(3)+
+ '. Binding reduces mean MSE: '+(receipt.gates.binding_reduces_mean_mse?'YES':'NO')+
+ '. Purpose raises true-CNN margin: '+(receipt.gates.purpose_increases_mean_margin?'YES':'NO')+
+ '. Results on '+receipt.n_test+' held-out correctly classified birds; example test index '+receipt.index+'.';
+}
+function loadData(data){
+ if(!data?.true||!data?.modes||!data?.summary||!data?.visible_pieces)throw Error('Not a DoDis receipt');
+ receipt=data;$('status').textContent='REAL RUN LOADED — test bird #'+data.index+
+  ' | '+data.n_test+' held-out birds | CNN-purpose surrogate validation R² '+
+  data.purpose.validation_r2.toFixed(3)+' | no ground-truth leakage into candidate search.';
+ $('status').style.borderLeftColor='#2b8277';show();
+}
+$('mode').addEventListener('change',show);
+$('receiptFile').addEventListener('change',async e=>{
+ const file=e.target.files?.[0];if(!file)return;
+ try{loadData(JSON.parse(await file.text()))}catch(err){$('status').textContent='Invalid receipt: '+err.message}
+});
+drawMask(null);drawTrace([]);
+fetch('./docs/receipt.json',{cache:'no-store'})
+ .then(r=>{if(!r.ok)throw Error('Run the Python experiment and commit docs/receipt.json to show real results.');return r.json()})
+ .then(loadData).catch(e=>{$('status').textContent='NO CIFAR RUN YET. '+e.message+
+ ' The source code and evaluation protocol are available now; the display will populate only from recorded data.'});
+</script>
+</body>
+</html>
