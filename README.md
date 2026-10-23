@@ -1,5 +1,7 @@
 # DoDis — What was there / What fits / What the model wants
 
+![pic](pic.png)
+
 **[Open GitHub Pages](https://anttiluode.github.io/DoDis/)** · [Locked experimental protocol](PREREG.md)
 
 DoDis connects three roles. **Content** is exact Sihti residues donated by other training images. **Consistency** is a graph learned from a separate set of bird images, with no CNN data. **Purpose** is an optional shared sparse graph distilled from the frozen CNN on yet another disjoint training split. This is an experimental image-repair system, not a claim of successful image generation.
