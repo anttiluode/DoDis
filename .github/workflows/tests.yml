@@ -1,0 +1,18 @@
+name: DoDis instrument checks
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  numpy-instrument:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install synthetic-test dependency
+        run: python -m pip install "numpy>=1.24"
+      - name: Run reproducibility, leak and descent tests
+        run: python -m unittest discover -s tests -v
