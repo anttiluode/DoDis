@@ -117,18 +117,19 @@ The new [v2 experiment](PREREG_V2.md) revisits the original [SihtiImageModel](ht
 - A **masked-mean (no-repair) baseline** is included. So a completion must first outperform doing nothing to count as an improvement.
 - The registered evaluation uses **100** previously unseen, intact-CNN-recognized test birds, with independent paired confidence intervals for learned-versus-shuffled binding. Every bird receives a separate restart-safe JSON receipt.
 
-The six fixed evaluation conditions are:
+The seven fixed evaluation conditions are:
 
 | Arm | Content candidate source | Extra consistency / preference |
 |---|---|---|
 | Masked mean | No retrieved details | None; explicit no-repair baseline |
 | Global memory | Same four whole-image donors as v1 | Smoothness and donor score |
-| Local memory | Four individually retrieved local donor patches | Same smoothness and donor score |
+| Same-band local memory | Per-piece local donors, **no cross-scale context** | Same smoothness and donor score; isolates the benefit of coarse/fine observations |
+| Local memory | Four individually retrieved local donor patches with visible cross-scale context | Same smoothness and donor score |
 | Local + learned binding | Same local donor patches | Graph A learned from other training images |
 | Local + shuffled binding | Same local donor patches | Matched, permuted Graph A |
 | Local + CNN purpose | Same local donor patches | Learned Graph A and optional Graph B classifier score |
 
-**No real v2 CIFAR outcome is claimed yet.** Passing the synthetic address and monotonicity tests is not evidence of improved photo reconstruction. The decisive results are (i) whether local memory beats both the masked-mean baseline and global donor memory, and (ii) whether binding beats the shuffled-binding control across 100 birds, with paired uncertainty reported.
+**No real v2 CIFAR outcome is claimed yet.** Passing the synthetic address and monotonicity tests is not evidence of improved photo reconstruction. The decisive results are (i) whether cross-scale local memory beats masked mean, global donors **and same-band-only local retrieval**, and (ii) whether binding beats the shuffled-binding control across 100 birds, with paired uncertainty reported.
 
 ### Run the v2 benchmark
 
