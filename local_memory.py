@@ -13,7 +13,7 @@ import numpy as np
 from dodis import features
 
 
-def context_for_piece(j: int, visible: np.ndarray):
+def context_for_piece(j: int, visible: np.ndarray, include_cross_scale:bool=True):
     """Observed pieces near j: 8 local neighbors + same-tile other bands
     + neighboring visible coarser band. Returns (band, dr, dc, weight)."""
     b, tile = divmod(int(j),16)
@@ -25,18 +25,19 @@ def context_for_piece(j: int, visible: np.ndarray):
             k=b*16+(r+dr)*4+c+dc
             if visible[k]:
                 result.append((b,dr,dc,1. if abs(dr)+abs(dc)==1 else .5))
-    for other in range(4):
-        if other==b:continue
-        k=other*16+tile
-        if visible[k]:
-            result.append((other,0,0,1.7 if other>b else 1.))
-    if b<3:
-        other=b+1
-        for dr,dc in ((1,0),(-1,0),(0,1),(0,-1)):
-            if not 0<=r+dr<4 or not 0<=c+dc<4:continue
-            k=other*16+(r+dr)*4+c+dc
+    if include_cross_scale:
+        for other in range(4):
+            if other==b:continue
+            k=other*16+tile
             if visible[k]:
-                result.append((other,dr,dc,.5))
+                result.append((other,0,0,1.7 if other>b else 1.))
+        if b<3:
+            other=b+1
+            for dr,dc in ((1,0),(-1,0),(0,1),(0,-1)):
+                if not 0<=r+dr<4 or not 0<=c+dc<4:continue
+                k=other*16+(r+dr)*4+c+dc
+                if visible[k]:
+                    result.append((other,dr,dc,.5))
     return result
 
 
@@ -72,7 +73,8 @@ class LocalPatchMemory:
         self.rows=self.tiles//4;self.cols=self.tiles%4
         self.prior_rms=np.sqrt(np.mean(bank*bank,axis=(2,3,4))).reshape(len(bank),4,16)
 
-    def retrieve(self, observed:np.ndarray,visible:np.ndarray,k:int=4):
+    def retrieve(self, observed:np.ndarray,visible:np.ndarray,k:int=4,
+                 include_cross_scale:bool=True):
         observed=np.asarray(observed,dtype=np.float32)
         visible=np.asarray(visible,dtype=bool)
         if observed.shape!=(64,3,8,8) or visible.shape!=(64,):
@@ -89,7 +91,7 @@ class LocalPatchMemory:
         counts=[0]*64
         for j in range(64):
             band,tile=divmod(j,16);r,c=divmod(tile,4)
-            context=context_for_piece(j,visible)
+            context=context_for_piece(j,visible,include_cross_scale=include_cross_scale)
             counts[j]=len(context)
             if visible[j]:
                 # No visible target piece is ever substituted by this memory.
