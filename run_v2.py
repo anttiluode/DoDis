@@ -127,7 +127,14 @@ def run(args):
     purpose,quality=fit_purpose(model,purpose_train,purpose_valid,norm,binding,device)
     print(f'Purpose validation R²={purpose.val_r2:.4f}; '
           f'local donor source bank={len(mem)*16} patches per band',flush=True)
+    source_fingerprints={
+        'memory_residues':hashlib.sha256(mem.tobytes()).hexdigest(),
+        'binding_residues':hashlib.sha256(bind_train.tobytes()).hexdigest(),
+        'purpose_fit_residues':hashlib.sha256(purpose_train.tobytes()).hexdigest(),
+        'purpose_validation_residues':hashlib.sha256(purpose_valid.tobytes()).hexdigest(),
+        'test_rgb_images':hashlib.sha256(tensors(test,eval_ids).tobytes()).hexdigest()}
     signature={'protocol':'dodis_v2_visible_local_1','checkpoint_sha256':sha256(ck),
+               'source_fingerprints':source_fingerprints,
                'seed':args.seed,'test_ids':eval_ids,
                'memory':mem_ids,'binding':bind_ids,
                'purpose_train':purpose_ids,'purpose_validation':validation_ids,
@@ -261,7 +268,8 @@ def run(args):
                   'memory_count':len(mem_ids),'binding_count':len(bind_ids),
                   'purpose_fit_count':len(purpose_ids),'purpose_validation_count':len(validation_ids),
                   'test_indices':eval_ids},
-            'source_checkpoint_sha256':sha256(ck),'teacher_info':model_info,
+            'source_checkpoint_sha256':sha256(ck),
+            'source_fingerprints':source_fingerprints,'teacher_info':model_info,
             'purpose_validation':quality,'modes':list(MODES),
             'summary':summary,'comparisons':comparisons,'gates':gates,
             'per_image':records,
