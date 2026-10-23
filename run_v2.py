@@ -20,8 +20,8 @@ from dodis import (band_pieces,render,features,Normalizer,BindingGraph,
 from local_memory import LocalPatchMemory
 from run import fit_purpose,score_cnn
 
-MODES=('masked_mean','global_memory','local_memory','local_binding',
-       'local_shuffled','local_purpose')
+MODES=('masked_mean','global_memory','local_sameband','local_memory',
+       'local_binding','local_shuffled','local_purpose')
 
 def atomic_json(path:Path,obj:dict):
     path.parent.mkdir(parents=True,exist_ok=True)
@@ -164,6 +164,7 @@ def run(args):
         observed=np.zeros_like(full)
         observed[visible]=full[visible]
         local=local_index.retrieve(observed,visible,k=args.donors)
+        sameband=local_index.retrieve(observed,visible,k=args.donors,include_cross_scale=False)
         donor_idx,donor_dist=nearest_donors(observed,visible,mem,k=args.donors)
         corrupt=render(observed,clip=True)
         corrupt_margin=float(score_cnn(model,corrupt[None],device)[0])
@@ -177,6 +178,8 @@ def run(args):
         for mode in MODES[1:]:
             if mode=='global_memory':
                 donors=mem[donor_idx];dist=donor_dist
+            elif mode=='local_sameband':
+                donors=sameband.candidates;dist=sameband.distances
             else:
                 donors=local.candidates;dist=local.distances
             graph=binding if mode in ('local_binding','local_purpose') else (
@@ -203,6 +206,7 @@ def run(args):
                 'mask':visible.astype(int).tolist(),
                 'local_context_zero_count':int(sum(local.observed_context_counts[j]==0 for j in hidden)),
                 'local_context_counts':[local.observed_context_counts[j] for j in hidden],
+                'sameband_context_counts':[sameband.observed_context_counts[j] for j in hidden],
                 'local_donor_provenance':{str(j):local.provenance[j] for j in hidden},
                 'global_donor_train_ids':[int(mem_ids[i]) for i in donor_idx],
                 'modes':modes}
@@ -231,6 +235,7 @@ def run(args):
                        'mse_improved_vs_local_memory_count':int(np.sum(arr<vals('local_memory')))}
     comparisons={}
     for a,b in [('local_memory','masked_mean'),
+                ('local_memory','local_sameband'),
                 ('global_memory','masked_mean'),
                 ('local_memory','global_memory'),
                 ('local_binding','local_memory'),
@@ -242,6 +247,8 @@ def run(args):
                r['modes'][m]['monotone'] for r in records for m in MODES),
            'G2_local_beats_masked_mean':bool(summary['local_memory']['mean_pixel_mse']<
                                             summary['masked_mean']['mean_pixel_mse']),
+           'G2_cross_scale_beats_sameband':bool(
+               summary['local_memory']['mean_pixel_mse']<summary['local_sameband']['mean_pixel_mse']),
            'G3_learned_beats_shuffled':bool(
                summary['local_binding']['mean_pixel_mse']<
                summary['local_shuffled']['mean_pixel_mse']),
