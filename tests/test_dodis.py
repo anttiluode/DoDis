@@ -62,11 +62,11 @@ class InstrumentTests(unittest.TestCase):
     def test_purpose_graph_is_train_only_regression(self):
         rng=np.random.default_rng(9)
         edges=np.asarray(candidate_edges()[:12],dtype=int)
-        u=rng.normal(size=(300,64,6))
+        u=rng.normal(size=(1800,64,6))
         y=2*u[:,5,1]-1.25*u[:,17,0]+.7*u[:,edges[0,0],5]*u[:,edges[0,1],5]
-        fit=PurposeGraph.fit(u[:220],y[:220],u[220:],y[220:],edges,ridge=.1)
+        fit=PurposeGraph.fit(u[:1300],y[:1300],u[1300:],y[1300:],edges,ridge=.1)
         self.assertGreater(fit.val_r2,.98)
-        self.assertTrue(np.isfinite(fit.predict(u[220])))
+        self.assertTrue(np.isfinite(fit.predict(u[1300])))
         self.assertEqual(purpose_design(u[:10],edges).shape,(10,1+64*6+len(edges)))
 
     def test_potts_coordinate_descent_monotone_observed_fixed(self):
