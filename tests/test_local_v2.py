@@ -70,6 +70,10 @@ class LocalMemoryTests(unittest.TestCase):
         self.assertIn((0,0,1,1.),ctx)
         self.assertIn((3,0,0,1.7),ctx)
         self.assertNotIn((0,0,0,1.),ctx)
+        sameband=context_for_piece(5,visible,include_cross_scale=False)
+        self.assertIn((0,0,1,1.),sameband)
+        self.assertNotIn((3,0,0,1.7),sameband)
+        self.assertEqual(len(sameband),1)
 
     def test_independent_penalties_per_hidden_piece_and_old_mode_unchanged(self):
         rng=np.random.default_rng(5)
@@ -94,6 +98,7 @@ class LocalMemoryTests(unittest.TestCase):
 
     def test_explicit_mean_baseline_and_pairwise_stats(self):
         self.assertIn('masked_mean',MODES)
+        self.assertIn('local_sameband',MODES)
         a=np.arange(100,dtype=float)/100
         b=a+.002
         stat=paired_stats(a,b,B=2000)
